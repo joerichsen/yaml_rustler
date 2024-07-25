@@ -7,7 +7,6 @@ defmodule YamlRustlerTest do
     foo: bar
     baz: 42
     """
-
     assert {:ok, %{"foo" => "bar", "baz" => 42}} == YamlRustler.parse(yaml)
   end
 
@@ -23,7 +22,6 @@ defmodule YamlRustlerTest do
       - reading
       - cycling
     """
-
     expected = %{
       "name" => "John Doe",
       "age" => 30,
@@ -33,12 +31,11 @@ defmodule YamlRustlerTest do
       },
       "hobbies" => ["reading", "cycling"]
     }
-
     assert {:ok, expected} == YamlRustler.parse(yaml)
   end
 
   test "handles parsing errors" do
     yaml = "invalid: : yaml"
-    assert {:error, _} = YamlRustler.parse(yaml)
+    assert {:error, "YAML parsing error: " <> _} = YamlRustler.parse(yaml)
   end
 end

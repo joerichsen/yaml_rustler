@@ -5,8 +5,6 @@ defmodule YamlRustler do
 
   use Rustler, otp_app: :yaml_rustler, crate: "yamlrustler_native"
 
-  alias YamlRustler.Native
-
   @doc """
   Parses a YAML string and returns an Elixir data structure.
 
@@ -16,13 +14,8 @@ defmodule YamlRustler do
       {:ok, %{"foo" => "bar"}}
 
       iex> YamlRustler.parse("invalid: : yaml")
-      {:error, "YAML parsing error: ..."}
+      {:error, "YAML parsing error: mapping values are not allowed in this context at byte 9 line 1 column 10"}
   """
-  @spec parse(String.t()) :: {:ok, term()} | {:error, String.t()}
-  def parse(yaml_string) do
-    case Native.parse(yaml_string) do
-      {:error, reason} -> {:error, reason}
-      result -> {:ok, result}
-    end
-  end
+  @spec parse(binary) :: {:ok, term} | {:error, binary}
+  def parse(_yaml_string), do: :erlang.nif_error(:nif_not_loaded)
 end
