@@ -34,6 +34,7 @@ defmodule YamlRustler.MixProject do
   defp deps do
     [
       {:rustler, "~> 0.34.0", runtime: false},
+      {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
       # For benchmarking
       {:benchee, "~> 1.3", only: :dev},
       # For benchmarking
