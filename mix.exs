@@ -7,7 +7,19 @@ defmodule YamlRustler.MixProject do
       version: "0.1.0",
       elixir: "~> 1.16",
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+      package: package(),
+      description: "Fast YAML parsing using Rust's yaml-rust2 via Rustler"
+    ]
+  end
+
+  defp package do
+    [
+      name: "yaml_rustler",
+      files: ~w(lib priv .formatter.exs mix.exs README* LICENSE*
+                native/yaml_rustler/src native/yaml_rustler/Cargo.toml),
+      licenses: ["MIT"],
+      links: %{"GitHub" => "https://github.com/joerichsen/yaml_rustler"}
     ]
   end
 
