@@ -9,7 +9,11 @@ defmodule YamlRustler.MixProject do
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       package: package(),
-      description: "Fast YAML parsing using Rust's yaml-rust2 via Rustler"
+      description: "Fast YAML parsing using Rust's yaml-rust2 via Rustler",
+      name: "YamlRustler",
+      source_url: "https://github.com/joerichsen/yaml_rustler",
+      homepage_url: "https://github.com/joerichsen/yaml_rustler",
+      docs: docs()
     ]
   end
 
@@ -20,6 +24,13 @@ defmodule YamlRustler.MixProject do
                 native/yamlrustler_native/src native/yamlrustler_native/Cargo.toml),
       licenses: ["MIT"],
       links: %{"GitHub" => "https://github.com/joerichsen/yaml_rustler"}
+    ]
+  end
+
+  defp docs do
+    [
+      main: "readme", # This will display the README on the main page
+      extras: ["README.md"]
     ]
   end
 
