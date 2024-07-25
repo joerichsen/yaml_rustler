@@ -2,7 +2,7 @@
 name = "yamlrustler_native"
 version = "0.1.0"
 authors = ["Jørgen Orehøj Erichsen <joe@erichsen.net>"]
-edition = "2024"
+edition = "2021"
 
 [lib]
 name = "yamlrustler_native"

@@ -2,12 +2,12 @@ defmodule YamlRustlerTest do
   use ExUnit.Case
   doctest YamlRustler
 
-
   test "parses simple YAML" do
     yaml = """
     foo: bar
     baz: 42
     """
+
     assert {:ok, %{"foo" => "bar", "baz" => 42}} == YamlRustler.parse(yaml)
   end
 
@@ -23,6 +23,7 @@ defmodule YamlRustlerTest do
       - reading
       - cycling
     """
+
     expected = %{
       "name" => "John Doe",
       "age" => 30,
@@ -32,6 +33,7 @@ defmodule YamlRustlerTest do
       },
       "hobbies" => ["reading", "cycling"]
     }
+
     assert {:ok, expected} == YamlRustler.parse(yaml)
   end
 

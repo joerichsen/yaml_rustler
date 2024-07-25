@@ -3,6 +3,8 @@ defmodule YamlRustler do
   YAML parsing library using Rust's yaml-rust2 via Rustler.
   """
 
+  use Rustler, otp_app: :yaml_rustler, crate: "yamlrustler_native"
+
   alias YamlRustler.Native
 
   @doc """

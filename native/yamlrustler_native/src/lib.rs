@@ -1,26 +1,26 @@
-use rustler::{Encoder, Env, Term};
+use rustler::{Encoder, Env, Term, NifResult};
 use yaml_rust2::{YamlLoader, Yaml};
 
 #[rustler::nif]
-fn parse(input: String) -> Result<Term, String> {
+fn parse<'a>(env: Env<'a>, input: String) -> NifResult<Term<'a>> {
     match YamlLoader::load_from_str(&input) {
-        Ok(docs) => Ok(convert_yaml_to_term(&docs[0])),
-        Err(e) => Err(format!("YAML parsing error: {}", e)),
+        Ok(docs) => Ok(convert_yaml_to_term(env, &docs[0])),
+        Err(e) => Err(rustler::Error::Term(Box::new(format!("YAML parsing error: {}", e)))),
     }
 }
 
-fn convert_yaml_to_term(yaml: &Yaml) -> Term {
+fn convert_yaml_to_term<'a>(env: Env<'a>, yaml: &Yaml) -> Term<'a> {
     match yaml {
-        Yaml::Real(s) => s.parse::<f64>().unwrap().encode(),
-        Yaml::Integer(i) => i.encode(),
-        Yaml::String(s) => s.encode(),
-        Yaml::Boolean(b) => b.encode(),
-        Yaml::Array(a) => a.iter().map(convert_yaml_to_term).collect::<Vec<Term>>().encode(),
-        Yaml::Hash(h) => h.iter().map(|(k, v)| (convert_yaml_to_term(k), convert_yaml_to_term(v))).collect::<Vec<(Term, Term)>>().encode(),
-        Yaml::Alias(_) => "<<alias>>".encode(),
-        Yaml::Null => ().encode(),
-        Yaml::BadValue => "<<bad_value>>".encode(),
+        Yaml::Real(s) => s.parse::<f64>().unwrap().encode(env),
+        Yaml::Integer(i) => i.encode(env),
+        Yaml::String(s) => s.encode(env),
+        Yaml::Boolean(b) => b.encode(env),
+        Yaml::Array(a) => a.iter().map(|v| convert_yaml_to_term(env, v)).collect::<Vec<Term>>().encode(env),
+        Yaml::Hash(h) => h.iter().map(|(k, v)| (convert_yaml_to_term(env, k), convert_yaml_to_term(env, v))).collect::<Vec<(Term, Term)>>().encode(env),
+        Yaml::Alias(_) => "<<alias>>".encode(env),
+        Yaml::Null => ().encode(env),
+        Yaml::BadValue => "<<bad_value>>".encode(env),
     }
 }
 
-rustler::init!("Elixir.YamlRustler.Native", [parse]);
+rustler::init!("Elixir.YamlRustler", [parse]);

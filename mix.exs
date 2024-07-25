@@ -21,9 +21,11 @@ defmodule YamlRustler.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:rustler, "~> 0.34.0"},
-      {:benchee, "~> 1.3", only: :dev}, # For benchmarking
-      {:fast_yaml, "~> 1.0", only: :dev} # For benchmarking
+      {:rustler, "~> 0.34.0", runtime: false},
+      # For benchmarking
+      {:benchee, "~> 1.3", only: :dev},
+      # For benchmarking
+      {:fast_yaml, "~> 1.0", only: :dev}
     ]
   end
 end
