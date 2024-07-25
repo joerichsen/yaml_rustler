@@ -32,4 +32,4 @@ fn convert_yaml_to_term<'a>(env: Env<'a>, yaml: &Yaml) -> Term<'a> {
     }
 }
 
-rustler::init!("Elixir.YamlRustler", [parse]);
+rustler::init!("Elixir.YamlRustler");
