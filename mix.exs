@@ -29,7 +29,8 @@ defmodule YamlRustler.MixProject do
 
   defp docs do
     [
-      main: "readme", # This will display the README on the main page
+      # This will display the README on the main page
+      main: "readme",
       extras: ["README.md"]
     ]
   end
