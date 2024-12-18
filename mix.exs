@@ -4,7 +4,7 @@ defmodule YamlRustler.MixProject do
   def project do
     [
       app: :yaml_rustler,
-      version: "0.1.3",
+      version: "0.1.4",
       elixir: "~> 1.16",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
@@ -20,8 +20,7 @@ defmodule YamlRustler.MixProject do
   defp package do
     [
       name: "yaml_rustler",
-      files:
-        ~w(lib priv .formatter.exs mix.exs README* LICENSE*
+      files: ~w(lib priv .formatter.exs mix.exs README* LICENSE*
                 native/yamlrustler_native/src native/yamlrustler_native/Cargo.toml
                 native/yamlrustler_native/.cargo/config.toml),
       licenses: ["MIT"],
@@ -48,6 +47,7 @@ defmodule YamlRustler.MixProject do
   defp deps do
     [
       {:rustler, "~> 0.34.0", runtime: false},
+      {:rustler_precompiled, "~> 0.8.2"},
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
       # For benchmarking
       {:benchee, "~> 1.3", only: :dev},
