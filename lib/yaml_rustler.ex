@@ -7,7 +7,7 @@ defmodule YamlRustler do
 
   use RustlerPrecompiled,
     otp_app: :yaml_rustler,
-    crate: "yamlrustler_native",
+    crate: "yamlrustler",
     base_url: "https://github.com/joerichsen/yaml_rustler/releases/download/#{version}",
     force_build: System.get_env("YAML_RUSTLER_BUILD") in ["1", "true"],
     version: version,

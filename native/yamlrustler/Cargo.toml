@@ -1,11 +1,11 @@
 [package]
-name = "yamlrustler_native"
-version = "0.1.0"
+name = "yamlrustler"
+version = "0.1.4"
 authors = ["Jørgen Orehøj Erichsen <joe@erichsen.net>"]
 edition = "2021"
 
 [lib]
-name = "yamlrustler_native"
+name = "yamlrustler"
 path = "src/lib.rs"
 crate-type = ["cdylib"]
 
