@@ -22,7 +22,7 @@ defmodule YamlRustler.MixProject do
       name: "yaml_rustler",
       files: ~w(lib priv .formatter.exs mix.exs README* LICENSE*
                 native/yamlrustler/src native/yamlrustler/Cargo.toml
-                native/yamlrustler/.cargo/config.toml),
+                native/yamlrustler/.cargo/config.toml checksum-*.exs),
       licenses: ["MIT"],
       links: %{"GitHub" => "https://github.com/joerichsen/yaml_rustler"}
     ]
@@ -47,7 +47,7 @@ defmodule YamlRustler.MixProject do
   defp deps do
     [
       {:rustler, "~> 0.34.0", runtime: false},
-      {:rustler_precompiled, "~> 0.8.2"},
+      {:rustler_precompiled, "~> 0.8.2", runtime: false},
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
       # For benchmarking
       {:benchee, "~> 1.3", only: :dev},
