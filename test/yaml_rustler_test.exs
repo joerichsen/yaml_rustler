@@ -421,4 +421,22 @@ defmodule YamlRustlerTest do
     assert {:ok, result} = YamlRustler.parse(yaml)
     assert result["top"] == %{"x" => 1, "y" => 2, "z" => 3}
   end
+
+  test "keeps the last value when different keys become the same term" do
+    assert {:ok, %{1.0 => "b"}} == YamlRustler.parse("1.0: a\n1.00: b")
+  end
+
+  test "explicit keys win over merged keys that become the same term" do
+    assert {:ok, %{1.0 => "explicit"}} ==
+             YamlRustler.parse("<<: {1.0: inherited}\n1.00: explicit\n")
+
+    yaml = """
+    a: &a {1.0: from_a}
+    b: &b {1.00: from_b}
+    c:
+      <<: [*a, *b]
+    """
+
+    assert {:ok, %{"c" => %{1.0 => "from_a"}}} = YamlRustler.parse(yaml)
+  end
 end
