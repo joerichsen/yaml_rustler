@@ -24,6 +24,10 @@ defmodule YamlRustler do
       x86_64-unknown-linux-musl
     )
 
+  # Parsing takes roughly 1 ms per 25 KB. Larger inputs run on a dirty scheduler so
+  # they do not block a normal scheduler; smaller ones avoid the dirty scheduler overhead.
+  @dirty_threshold 20_000
+
   @doc """
   Parses a YAML string and returns an Elixir data structure.
 
@@ -41,5 +45,15 @@ defmodule YamlRustler do
       {:error, "YAML parsing error: mapping values are not allowed in this context at byte 9 line 1 column 10"}
   """
   @spec parse(binary) :: {:ok, term} | {:error, binary}
-  def parse(_yaml_string), do: :erlang.nif_error(:nif_not_loaded)
+  def parse(yaml_string)
+      when is_binary(yaml_string) and byte_size(yaml_string) > @dirty_threshold,
+      do: parse_dirty_nif(yaml_string)
+
+  def parse(yaml_string), do: parse_nif(yaml_string)
+
+  @doc false
+  def parse_nif(_yaml_string), do: :erlang.nif_error(:nif_not_loaded)
+
+  @doc false
+  def parse_dirty_nif(_yaml_string), do: :erlang.nif_error(:nif_not_loaded)
 end

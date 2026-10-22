@@ -11,6 +11,16 @@ mod atoms {
 }
 
 #[rustler::nif]
+fn parse_nif<'a>(env: Env<'a>, input: &str) -> NifResult<Term<'a>> {
+    parse(env, input)
+}
+
+// Large inputs take more than the ~1 ms a NIF should run on a normal scheduler
+#[rustler::nif(schedule = "DirtyCpu")]
+fn parse_dirty_nif<'a>(env: Env<'a>, input: &str) -> NifResult<Term<'a>> {
+    parse(env, input)
+}
+
 fn parse<'a>(env: Env<'a>, input: &str) -> NifResult<Term<'a>> {
     match YamlLoader::load_from_str(input) {
         Ok(docs) => {
