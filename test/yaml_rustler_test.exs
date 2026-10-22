@@ -439,4 +439,14 @@ defmodule YamlRustlerTest do
 
     assert {:ok, %{"c" => %{1.0 => "from_a"}}} = YamlRustler.parse(yaml)
   end
+
+  test "parses capitalized booleans" do
+    assert {:ok, %{"a" => true, "b" => false, "c" => true}} ==
+             YamlRustler.parse("a: True\nb: FALSE\nc: true")
+  end
+
+  test "parses inf and nan without a leading dot as strings" do
+    assert {:ok, %{"a" => "inf", "b" => "nan", "c" => "-Infinity"}} ==
+             YamlRustler.parse("a: inf\nb: nan\nc: -Infinity")
+  end
 end
