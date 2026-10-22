@@ -20,9 +20,10 @@ defmodule YamlRustler.MixProject do
   defp package do
     [
       name: "yaml_rustler",
-      files: ~w(lib priv .formatter.exs mix.exs README* LICENSE*
+      files: ~w(lib .formatter.exs mix.exs README* LICENSE*
                 native/yamlrustler/src native/yamlrustler/Cargo.toml
-                native/yamlrustler/.cargo/config.toml checksum-*.exs),
+                native/yamlrustler/Cargo.lock native/yamlrustler/.cargo/config.toml
+                checksum-*.exs),
       licenses: ["MIT"],
       links: %{"GitHub" => "https://github.com/joerichsen/yaml_rustler"}
     ]

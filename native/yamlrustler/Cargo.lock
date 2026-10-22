@@ -225,7 +225,7 @@ dependencies = [
 
 [[package]]
 name = "yamlrustler"
-version = "0.1.4"
+version = "0.1.6"
 dependencies = [
  "rustler",
  "yaml-rust2",

@@ -26,3 +26,6 @@ yaml_rustler-*.tar
 /tmp/
 
 .tool-versions
+
+# Locally built or downloaded NIFs
+/priv/native/
