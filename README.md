@@ -9,7 +9,7 @@ Add `yaml_rustler` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:yaml_rustler, "~> 0.1.0"}
+    {:yaml_rustler, "~> 0.2.0"}
   ]
 end
 ```
