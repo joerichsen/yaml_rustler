@@ -316,4 +316,81 @@ defmodule YamlRustlerTest do
     assert result["nan"] == :nan
     assert result["overflow"] == :infinity
   end
+
+  test "explicit keys take precedence over merged keys regardless of order" do
+    yaml = """
+    base: &base {x: 1, y: 2, z: 3}
+    child:
+      y: before
+      <<: *base
+      z: after
+    """
+
+    assert {:ok, result} = YamlRustler.parse(yaml)
+    assert result["child"] == %{"x" => 1, "y" => "before", "z" => "after"}
+  end
+
+  test "parses non-string keys" do
+    yaml = """
+    1: int
+    true: bool
+    ~: null key
+    1.5: float
+    [1, 2]: list
+    """
+
+    assert {:ok, result} = YamlRustler.parse(yaml)
+
+    assert result == %{
+             1 => "int",
+             true => "bool",
+             nil => "null key",
+             1.5 => "float",
+             [1, 2] => "list"
+           }
+  end
+
+  test "resolves aliases to scalars and lists" do
+    yaml = """
+    s: &s hello
+    l: &l [1, 2]
+    refs: [*s, *l]
+    """
+
+    assert {:ok, result} = YamlRustler.parse(yaml)
+    assert result["refs"] == ["hello", [1, 2]]
+  end
+
+  test "returns an error for an unknown alias" do
+    assert {:error, "YAML parsing error: " <> message} = YamlRustler.parse("x: *nope")
+    assert message =~ "unknown anchor"
+  end
+
+  test "parses integer formats" do
+    yaml = """
+    hex: 0x1F
+    octal: 0o17
+    plus: +5
+    quoted: "42"
+    """
+
+    assert {:ok, %{"hex" => 31, "octal" => 15, "plus" => 5, "quoted" => "42"}} ==
+             YamlRustler.parse(yaml)
+  end
+
+  test "raises ArgumentError for input that is not valid UTF-8" do
+    assert_raise ArgumentError, fn -> YamlRustler.parse(<<0xFF, 0xFE>>) end
+  end
+
+  test "parses a large document" do
+    yaml =
+      "entries:\n" <>
+        Enum.map_join(1..5_000, "", fn i ->
+          "  - id: #{i}\n    name: \"item #{i}\"\n    tags: [a, b]\n"
+        end)
+
+    assert {:ok, %{"entries" => entries}} = YamlRustler.parse(yaml)
+    assert length(entries) == 5_000
+    assert List.last(entries) == %{"id" => 5_000, "name" => "item 5000", "tags" => ["a", "b"]}
+  end
 end
