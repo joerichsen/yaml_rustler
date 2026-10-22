@@ -393,4 +393,32 @@ defmodule YamlRustlerTest do
     assert length(entries) == 5_000
     assert List.last(entries) == %{"id" => 5_000, "name" => "item 5000", "tags" => ["a", "b"]}
   end
+
+  test "merges a list of mappings with earlier mappings taking precedence" do
+    yaml = """
+    a: &a {x: a, only_a: 1}
+    b: &b {x: b, y: b}
+    c:
+      <<: [*a, *b]
+      y: own
+    """
+
+    assert {:ok, result} = YamlRustler.parse(yaml)
+    assert result["c"] == %{"x" => "a", "only_a" => 1, "y" => "own"}
+  end
+
+  test "resolves merge keys inside merged mappings" do
+    yaml = """
+    base: &base {x: 1}
+    middle: &middle
+      <<: *base
+      y: 2
+    top:
+      <<: *middle
+      z: 3
+    """
+
+    assert {:ok, result} = YamlRustler.parse(yaml)
+    assert result["top"] == %{"x" => 1, "y" => 2, "z" => 3}
+  end
 end

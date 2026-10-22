@@ -32,10 +32,23 @@ fn resolve_aliases<'a>(yaml: &'a Yaml, docs: &'a [Yaml]) -> Yaml {
                 let new_k = resolve_aliases(k, docs);
                 let new_v = resolve_aliases(v, docs);
                 if new_k == Yaml::String("<<".to_string()) {
-                    if let Yaml::Hash(merge_hash) = new_v {
+                    // A merge key takes a mapping or a list of mappings, where
+                    // earlier mappings take precedence over later ones
+                    let merge_hashes = match new_v {
+                        Yaml::Hash(merge_hash) => vec![merge_hash],
+                        Yaml::Array(merge_list) => merge_list
+                            .into_iter()
+                            .filter_map(|m| match m {
+                                Yaml::Hash(merge_hash) => Some(merge_hash),
+                                _ => None,
+                            })
+                            .collect(),
+                        _ => vec![],
+                    };
+                    for merge_hash in merge_hashes {
                         for (merge_k, merge_v) in merge_hash {
                             if !new_hash.contains_key(&merge_k) {
-                                new_hash.insert(merge_k.clone(), merge_v.clone());
+                                new_hash.insert(merge_k, merge_v);
                             }
                         }
                     }
