@@ -1,6 +1,6 @@
 [package]
 name = "yamlrustler"
-version = "0.2.1"
+version = "0.2.2"
 authors = ["Jørgen Orehøj Erichsen <joe@erichsen.net>"]
 edition = "2021"
 
