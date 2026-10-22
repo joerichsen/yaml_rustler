@@ -36,6 +36,14 @@ defmodule YamlRustler do
   `.inf`, `-.inf` and `.nan` cannot be represented on the BEAM and are
   returned as the atoms `:infinity`, `:neg_infinity` and `:nan`.
 
+  ## Options
+
+    * `:ruby` - read plain values the way Ruby's Psych does, for YAML written
+      by Ruby (e.g. Rails serialized columns). Psych follows YAML 1.1, where a
+      float needs a `.` and an exponent needs a sign, so it writes strings like
+      `1e5` or `1.5e3` without quotes. With this option they stay strings
+      instead of becoming floats. Defaults to `false` (YAML 1.2).
+
   ## Examples
 
       iex> YamlRustler.parse("foo: bar")
@@ -43,23 +51,31 @@ defmodule YamlRustler do
 
       iex> YamlRustler.parse("invalid: : yaml")
       {:error, "YAML parsing error: mapping values are not allowed in this context at byte 9 line 1 column 10"}
-  """
-  @spec parse(binary) :: {:ok, term} | {:error, binary}
-  def parse(yaml_string)
-      when is_binary(yaml_string) and byte_size(yaml_string) > @dirty_threshold,
-      do: parse_dirty_nif(yaml_string)
 
-  def parse(yaml_string) do
-    # The normal scheduler NIF leaves documents that need repairing to the dirty one
-    case parse_nif(yaml_string) do
-      :reschedule -> parse_dirty_nif(yaml_string)
-      result -> result
+      iex> YamlRustler.parse("a: 1e5")
+      {:ok, %{"a" => 100000.0}}
+
+      iex> YamlRustler.parse("a: 1e5", ruby: true)
+      {:ok, %{"a" => "1e5"}}
+  """
+  @spec parse(binary, keyword) :: {:ok, term} | {:error, binary}
+  def parse(yaml_string, opts \\ []) do
+    ruby = Keyword.get(opts, :ruby, false)
+
+    if is_binary(yaml_string) and byte_size(yaml_string) > @dirty_threshold do
+      parse_dirty_nif(yaml_string, ruby)
+    else
+      # The normal scheduler NIF leaves documents that need repairing to the dirty one
+      case parse_nif(yaml_string, ruby) do
+        :reschedule -> parse_dirty_nif(yaml_string, ruby)
+        result -> result
+      end
     end
   end
 
   @doc false
-  def parse_nif(_yaml_string), do: :erlang.nif_error(:nif_not_loaded)
+  def parse_nif(_yaml_string, _ruby), do: :erlang.nif_error(:nif_not_loaded)
 
   @doc false
-  def parse_dirty_nif(_yaml_string), do: :erlang.nif_error(:nif_not_loaded)
+  def parse_dirty_nif(_yaml_string, _ruby), do: :erlang.nif_error(:nif_not_loaded)
 end

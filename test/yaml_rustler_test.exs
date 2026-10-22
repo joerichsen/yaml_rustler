@@ -500,4 +500,90 @@ defmodule YamlRustlerTest do
       assert {:error, "YAML parsing error: " <> _} = YamlRustler.parse("a: 'x\n---\ny'\n")
     end
   end
+
+  describe "ruby: true" do
+    test "keeps strings that Ruby's Psych writes without quotes" do
+      yaml = "a: 1e5\nb: 12e345\nc: 00e123\nd: 1.5e3\n12e3: key\n"
+
+      assert {:ok,
+              %{"a" => "1e5", "b" => "12e345", "c" => "00e123", "d" => "1.5e3", "12e3" => "key"}} ==
+               YamlRustler.parse(yaml, ruby: true)
+
+      assert {:ok,
+              %{"a" => 100_000.0, "b" => :infinity, "c" => 0.0, "d" => 1500.0, 12000.0 => "key"}} ==
+               YamlRustler.parse(yaml)
+    end
+
+    test "parses floats as Ruby writes them" do
+      yaml = "a: 1.5\nb: 1.0e+20\nc: 1.0e-05\nd: .5\ne: 1.\nf: .inf\ng: -.inf\nh: .nan\n"
+
+      assert {:ok,
+              %{
+                "a" => 1.5,
+                "b" => 1.0e20,
+                "c" => 1.0e-5,
+                "d" => 0.5,
+                "e" => 1.0,
+                "f" => :infinity,
+                "g" => :neg_infinity,
+                "h" => :nan
+              }} == YamlRustler.parse(yaml, ruby: true)
+    end
+
+    test "keeps 0o strings, which are not integers in YAML 1.1" do
+      assert {:ok, %{"a" => "0o17", "b" => 31}} ==
+               YamlRustler.parse("a: 0o17\nb: 0x1F\n", ruby: true)
+
+      assert {:ok, %{"a" => 15, "b" => 31}} == YamlRustler.parse("a: 0o17\nb: 0x1F\n")
+    end
+
+    test "keeps integers beyond 64 bits numeric, as in the default mode" do
+      assert {:ok, %{"a" => 9.223372036854776e18}} ==
+               YamlRustler.parse("a: 9223372036854775808\n", ruby: true)
+
+      assert YamlRustler.parse("a: 9223372036854775808\n") ==
+               YamlRustler.parse("a: 9223372036854775808\n", ruby: true)
+    end
+
+    test "keeps hexadecimal-looking strings that are not integers in YAML 1.1" do
+      assert {:ok, %{"a" => "0x+1", "b" => "0x-1", "c" => 5, "d" => -7}} ==
+               YamlRustler.parse("a: 0x+1\nb: 0x-1\nc: +5\nd: -7\n", ruby: true)
+    end
+
+    test "respects explicit tags" do
+      assert {:ok, %{"a" => 100_000.0, "b" => 1.0, "c" => "1e5"}} ==
+               YamlRustler.parse("a: !!float 1e5\nb: !!float 1\nc: '1e5'\n", ruby: true)
+    end
+
+    test "still reports duplicated keys, and resolves aliases and merge keys" do
+      assert {:error, "YAML parsing error: " <> message} =
+               YamlRustler.parse("a: 1\na: 2\n", ruby: true)
+
+      assert message =~ "duplicated key"
+
+      yaml = "base: &b {v: 1e5}\nref: *b\nchild:\n  <<: *b\n  w: 2\n"
+
+      assert {:ok,
+              %{
+                "base" => %{"v" => "1e5"},
+                "ref" => %{"v" => "1e5"},
+                "child" => %{"v" => "1e5", "w" => 2}
+              }} ==
+               YamlRustler.parse(yaml, ruby: true)
+    end
+
+    test "combines with repairing unindented quoted strings" do
+      assert {:ok, %{"iv" => "abc==\n", "a" => "1e5"}} ==
+               YamlRustler.parse("---\niv: 'abc==\n\n'\na: 1e5\n", ruby: true)
+    end
+
+    test "applies to nested values and large documents" do
+      yaml =
+        "list:\n" <> String.duplicate("  - {name: 1e5, price: 2.5}\n", 2_000)
+
+      assert byte_size(yaml) > 20_000
+      assert {:ok, %{"list" => list}} = YamlRustler.parse(yaml, ruby: true)
+      assert Enum.all?(list, &(&1 == %{"name" => "1e5", "price" => 2.5}))
+    end
+  end
 end

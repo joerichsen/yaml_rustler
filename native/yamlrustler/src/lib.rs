@@ -1,6 +1,11 @@
 use rustler::{Encoder, Env, Term, NifResult, types::atom::ok, types::tuple::make_tuple};
 use std::collections::HashSet;
-use yaml_rust2::{scanner::{Marker, ScanError}, yaml::Hash, YamlLoader, Yaml};
+use yaml_rust2::{
+    parser::{Event, MarkedEventReceiver, Parser},
+    scanner::{Marker, ScanError, TScalarStyle},
+    yaml::Hash,
+    Yaml, YamlLoader,
+};
 
 mod atoms {
     rustler::atoms! {
@@ -12,18 +17,18 @@ mod atoms {
 }
 
 #[rustler::nif]
-fn parse_nif<'a>(env: Env<'a>, input: &str) -> NifResult<Term<'a>> {
-    parse(env, input, false)
+fn parse_nif<'a>(env: Env<'a>, input: &str, ruby: bool) -> NifResult<Term<'a>> {
+    parse(env, input, ruby, false)
 }
 
 // Large inputs take more than the ~1 ms a NIF should run on a normal scheduler
 #[rustler::nif(schedule = "DirtyCpu")]
-fn parse_dirty_nif<'a>(env: Env<'a>, input: &str) -> NifResult<Term<'a>> {
-    parse(env, input, true)
+fn parse_dirty_nif<'a>(env: Env<'a>, input: &str, ruby: bool) -> NifResult<Term<'a>> {
+    parse(env, input, ruby, true)
 }
 
-fn parse<'a>(env: Env<'a>, input: &str, dirty: bool) -> NifResult<Term<'a>> {
-    let loaded = if dirty { load(input) } else { YamlLoader::load_from_str(input) };
+fn parse<'a>(env: Env<'a>, input: &str, ruby: bool, dirty: bool) -> NifResult<Term<'a>> {
+    let loaded = if dirty { load(input, ruby) } else { load_documents(input, ruby) };
     match loaded {
         Ok(docs) => {
             // An empty stream (e.g. "" or only comments) has no documents
@@ -52,8 +57,8 @@ fn parse<'a>(env: Env<'a>, input: &str, dirty: bool) -> NifResult<Term<'a>> {
 // them and parse again, once for each such scalar.
 const MAX_REINDENTS: usize = 100;
 
-fn load(input: &str) -> Result<Vec<Yaml>, ScanError> {
-    let first = match YamlLoader::load_from_str(input) {
+fn load(input: &str, ruby: bool) -> Result<Documents, ScanError> {
+    let first = match load_documents(input, ruby) {
         Err(e) if needs_reindent(&e) => e,
         result => return result,
     };
@@ -65,13 +70,83 @@ fn load(input: &str) -> Result<Vec<Yaml>, ScanError> {
             Some(reindented) if reindented != text => text = reindented,
             _ => return Err(first),
         }
-        match YamlLoader::load_from_str(&text) {
+        match load_documents(&text, ruby) {
             Err(e) if needs_reindent(&e) => marker = *e.marker(),
             Err(_) => return Err(first),
             ok => return ok,
         }
     }
     Err(first)
+}
+
+// Parsed documents, either from YamlLoader::load_from_str or still inside the
+// loader that RubyScalars fed (which only lends them out).
+enum Documents {
+    Owned(Vec<Yaml>),
+    Loader(YamlLoader),
+}
+
+impl Documents {
+    fn first(&self) -> Option<&Yaml> {
+        match self {
+            Documents::Owned(docs) => docs.first(),
+            Documents::Loader(loader) => loader.documents().first(),
+        }
+    }
+}
+
+fn load_documents(text: &str, ruby: bool) -> Result<Documents, ScanError> {
+    if !ruby {
+        return YamlLoader::load_from_str(text).map(Documents::Owned);
+    }
+
+    let mut receiver = RubyScalars { loader: YamlLoader::default(), document_ends: 0, last_mark: None };
+    Parser::new_from_str(text).load(&mut receiver, true)?;
+    // The loader's own errors (duplicated keys) are private, but it stops
+    // storing documents after one. Load again the standard way to get it.
+    if receiver.loader.documents().len() < receiver.document_ends {
+        YamlLoader::load_from_str(text)?;
+        let mark = receiver.last_mark.expect("a document was loaded");
+        return Err(ScanError::new(mark, "duplicated key in mapping"));
+    }
+    Ok(Documents::Loader(receiver.loader))
+}
+
+// Feeds a YamlLoader, turning plain scalars that YAML 1.2 reads as numbers but
+// Ruby's Psych (YAML 1.1) reads as strings into strings. Psych writes such
+// strings without quotes: 1e5 and 1.5e3 (a Psych float needs a "." and a
+// signed exponent), and 0o17 or 0x+1 (not integers in YAML 1.1). Tagged
+// scalars, like !!float 1e5, are left to the loader.
+struct RubyScalars {
+    loader: YamlLoader,
+    document_ends: usize,
+    last_mark: Option<Marker>,
+}
+
+impl MarkedEventReceiver for RubyScalars {
+    fn on_event(&mut self, event: Event, mark: Marker) {
+        self.last_mark = Some(mark);
+        let event = match event {
+            Event::Scalar(value, TScalarStyle::Plain, anchor, None) if is_psych_string(&value) => {
+                Event::Scalar(value, TScalarStyle::SingleQuoted, anchor, None)
+            }
+            Event::DocumentEnd => {
+                self.document_ends += 1;
+                event
+            }
+            event => event,
+        };
+        self.loader.on_event(event, mark);
+    }
+}
+
+fn is_psych_string(value: &str) -> bool {
+    match Yaml::from_str(value) {
+        // Integers beyond i64 also end up as reals
+        Yaml::Real(_) => !is_psych_float(value) && !is_psych_integer(value),
+        Yaml::Integer(_) => !is_psych_integer(value),
+        _ => false,
+    }
 }
 
 fn needs_reindent(error: &ScanError) -> bool {
@@ -267,6 +342,50 @@ fn convert_yaml_to_term<'a>(env: Env<'a>, yaml: &Yaml) -> Term<'a> {
         // The loader resolves aliases, so these do not occur
         Yaml::Alias(_) => rustler::types::atom::nil().encode(env),
     }
+}
+
+// Psych's ScalarScanner::INTEGER:
+//   [-+]?0b[0-1_,]+  |  [-+]?0[0-7_,]+  |  [-+]?(0|[1-9][0-9_,]*)  |  [-+]?0x[0-9a-fA-F_,]+
+fn is_psych_integer(s: &str) -> bool {
+    let unsigned = s.strip_prefix(['+', '-']).unwrap_or(s);
+    let all = |digits: &str, valid: fn(char) -> bool| {
+        !digits.is_empty() && digits.chars().all(|c| valid(c) || c == '_' || c == ',')
+    };
+    if let Some(digits) = unsigned.strip_prefix("0b") {
+        all(digits, |c| c == '0' || c == '1')
+    } else if let Some(digits) = unsigned.strip_prefix("0x") {
+        all(digits, |c| c.is_ascii_hexdigit())
+    } else if let Some(digits) = unsigned.strip_prefix('0') {
+        digits.is_empty() || all(digits, |c| ('0'..='7').contains(&c))
+    } else {
+        unsigned.starts_with(|c: char| c.is_ascii_digit()) && all(unsigned, |c| c.is_ascii_digit())
+    }
+}
+
+// Psych's ScalarScanner::FLOAT:
+//   [-+]?([0-9][0-9_,]*)?\.[0-9]*([eE][-+][0-9]+)?  |  [-+]?\.(inf|Inf|INF)  |  \.(nan|NaN|NAN)
+// It also reads .inf, -.inf and .nan in any case. "." alone is a string.
+fn is_psych_float(s: &str) -> bool {
+    let lower = s.to_ascii_lowercase();
+    if matches!(lower.as_str(), ".inf" | "+.inf" | "-.inf" | ".nan") {
+        return true;
+    }
+
+    let unsigned = s.strip_prefix(['+', '-']).unwrap_or(s);
+    let Some((whole, fraction)) = unsigned.split_once('.') else {
+        return false;
+    };
+    let whole_ok = whole.is_empty()
+        || (whole.starts_with(|c: char| c.is_ascii_digit())
+            && whole.chars().all(|c| c.is_ascii_digit() || c == '_' || c == ','));
+    let (digits, exponent) = match fraction.find(['e', 'E']) {
+        Some(i) => (&fraction[..i], Some(&fraction[i + 1..])),
+        None => (fraction, None),
+    };
+    let exponent_ok = exponent.map_or(true, |e| {
+        e.len() > 1 && e.starts_with(['+', '-']) && e[1..].chars().all(|c| c.is_ascii_digit())
+    });
+    whole_ok && digits.chars().all(|c| c.is_ascii_digit()) && exponent_ok && !(whole.is_empty() && fraction.is_empty())
 }
 
 rustler::init!("Elixir.YamlRustler");

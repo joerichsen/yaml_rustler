@@ -31,6 +31,14 @@ iex> YamlRustler.parse(yaml)
 {:ok, %{"foo" => "bar", "baz" => ["qux", "quux"]}}
 ```
 
+For YAML written by Ruby, such as Rails serialized columns, pass `ruby: true` so
+values are read the way Ruby's Psych reads them (e.g. `1e5` stays a string):
+
+```elixir
+iex> YamlRustler.parse("number: 1e5", ruby: true)
+{:ok, %{"number" => "1e5"}}
+```
+
 ## Performance
 
 YamlRustler has been benchmarked against fast_yaml, another popular YAML parsing library for Elixir. Here are the results:

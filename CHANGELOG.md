@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Added
+
+- `parse/2` with `ruby: true` reads plain values the way Ruby's Psych does,
+  for YAML written by Ruby (e.g. Rails serialized columns). Psych follows
+  YAML 1.1 and writes strings like `1e5` or `1.5e3` without quotes; with this
+  option they stay strings instead of becoming floats.
+
 ### Fixed
 
 - Quoted strings whose continuation lines are not indented, as written by
