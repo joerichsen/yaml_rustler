@@ -14,6 +14,10 @@ def deps do
 end
 ```
 
+Precompiled NIFs are downloaded for common platforms, so you do not need Rust installed.
+To build the NIF from source instead, add `{:rustler, ">= 0.0.0"}` to your dependencies
+and set `YAML_RUSTLER_BUILD=1`.
+
 ## Usage
 
 ```elixir

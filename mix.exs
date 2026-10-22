@@ -47,11 +47,12 @@ defmodule YamlRustler.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:rustler, "~> 0.34.0", runtime: false},
-      {:rustler_precompiled, "~> 0.8.2", runtime: false},
+      # Only needed when building the NIF from source (YAML_RUSTLER_BUILD=1)
+      {:rustler, ">= 0.0.0", optional: true, runtime: false},
+      {:rustler_precompiled, "~> 0.8", runtime: false},
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
       # For benchmarking
-      {:benchee, "~> 1.3", only: :dev},
+      {:benchee, "~> 1.5", only: :dev},
       # For benchmarking
       {:fast_yaml, "~> 1.0", only: :dev}
     ]
