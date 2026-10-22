@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Quoted strings whose continuation lines are not indented, as written by
+  Ruby's Psych on older Ruby versions, are parsed like libyaml does instead of
+  returning an "invalid indentation in quoted scalar" error.
+
 ## 0.2.0 (2026-10-22)
 
 ### Fixed

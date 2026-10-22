@@ -449,4 +449,55 @@ defmodule YamlRustlerTest do
     assert {:ok, %{"a" => "inf", "b" => "nan", "c" => "-Infinity"}} ==
              YamlRustler.parse("a: inf\nb: nan\nc: -Infinity")
   end
+
+  describe "quoted strings with unindented continuation lines (as written by older Psych)" do
+    test "parses them like libyaml does" do
+      assert {:ok, %{"iv" => "abc==\n", "a" => 1}} ==
+               YamlRustler.parse("---\niv: 'abc==\n\n'\na: 1\n")
+
+      assert {:ok, %{"outer" => %{"iv" => "abc==\n", "b" => 2}}} ==
+               YamlRustler.parse("---\nouter:\n  iv: 'abc==\n\n'\n  b: 2\n")
+
+      assert {:ok, %{"a" => "one two", "b" => "three\nfour ", "c" => "x y"}} ==
+               YamlRustler.parse("a: 'one\ntwo'\nb: 'three\n\nfour\n'\nc: \"x\ny\"\n")
+    end
+
+    test "handles escaped quotes and multibyte characters" do
+      assert {:ok, %{"a" => "it's here"}} == YamlRustler.parse("a: 'it''s\nhere'\n")
+
+      assert {:ok, %{"a" => "esc \" quote next \\ "}} ==
+               YamlRustler.parse("a: \"esc \\\" quote\nnext \\\\\n\"\n")
+
+      assert {:ok, %{"navn" => "Søren ø Æble", "next" => "å "}} ==
+               YamlRustler.parse("navn: 'Søren ø\nÆble'\nnext: 'å\n'\n")
+    end
+
+    test "handles mappings in sequences and escaped line breaks" do
+      assert {:ok, [%{"iv" => "abc==\n"}]} == YamlRustler.parse("- iv: 'abc==\n\n'\n")
+      assert {:ok, %{"a" => "onetwo"}} == YamlRustler.parse("a: \"one\\\ntwo\"\n")
+    end
+
+    test "handles CR line endings and multibyte characters in earlier block scalars" do
+      assert {:ok, %{"a" => "x y"}} == YamlRustler.parse("a: 'x\ry'\r")
+      assert {:ok, %{"a" => "onetwo"}} == YamlRustler.parse("a: \"one\\\rtwo\"\r")
+
+      assert {:ok, %{"b" => "abcå\n", "a" => "x y"}} ==
+               YamlRustler.parse("b: |\n  abcå\na: 'x\ny'\n")
+    end
+
+    test "gives up instead of growing a pathological input without bound" do
+      yaml =
+        "    " <>
+          String.duplicate(" ", 9_000) <> "a: 'x" <> String.duplicate("\ny", 4_500) <> "'\n"
+
+      assert {:error, "YAML parsing error: " <> _} = YamlRustler.parse(yaml)
+    end
+
+    test "still rejects invalid quoted strings" do
+      assert {:error, "YAML parsing error: " <> _} = YamlRustler.parse("a: 'x\ny\n---\nz'\n")
+      assert {:error, "YAML parsing error: " <> _} = YamlRustler.parse("a: 'x\ny\n...\nz'\n")
+      assert {:error, "YAML parsing error: " <> _} = YamlRustler.parse("a: 'unterminated\n")
+      assert {:error, "YAML parsing error: " <> _} = YamlRustler.parse("a: 'x\n---\ny'\n")
+    end
+  end
 end

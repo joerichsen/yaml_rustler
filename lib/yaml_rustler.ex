@@ -49,7 +49,13 @@ defmodule YamlRustler do
       when is_binary(yaml_string) and byte_size(yaml_string) > @dirty_threshold,
       do: parse_dirty_nif(yaml_string)
 
-  def parse(yaml_string), do: parse_nif(yaml_string)
+  def parse(yaml_string) do
+    # The normal scheduler NIF leaves documents that need repairing to the dirty one
+    case parse_nif(yaml_string) do
+      :reschedule -> parse_dirty_nif(yaml_string)
+      result -> result
+    end
+  end
 
   @doc false
   def parse_nif(_yaml_string), do: :erlang.nif_error(:nif_not_loaded)
