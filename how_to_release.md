@@ -1,8 +1,12 @@
 # How to release
 
-## Bump the version in `mix.exs`
+## Bump the version
 
-Bump the version in `mix.exs` for example to 0.1.6, commit and push.
+Bump the version in `mix.exs` and `native/yamlrustler/Cargo.toml` (run
+`cargo update -p yamlrustler` in `native/yamlrustler` to update Cargo.lock),
+for example to 0.1.6. Rename `## Unreleased` in `CHANGELOG.md` to the new
+version and date, and update the version in the installation instructions
+in `README.md`. Commit and push.
 
 ## Tag the release
 git tag 0.1.6

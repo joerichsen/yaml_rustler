@@ -20,7 +20,7 @@ defmodule YamlRustler.MixProject do
   defp package do
     [
       name: "yaml_rustler",
-      files: ~w(lib .formatter.exs mix.exs README* LICENSE*
+      files: ~w(lib .formatter.exs mix.exs README* LICENSE* CHANGELOG*
                 native/yamlrustler/src native/yamlrustler/Cargo.toml
                 native/yamlrustler/Cargo.lock native/yamlrustler/.cargo/config.toml
                 checksum-*.exs),
@@ -33,7 +33,7 @@ defmodule YamlRustler.MixProject do
     [
       # This will display the README on the main page
       main: "readme",
-      extras: ["README.md"]
+      extras: ["README.md", "CHANGELOG.md"]
     ]
   end
 
