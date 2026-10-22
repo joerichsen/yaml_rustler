@@ -293,4 +293,27 @@ defmodule YamlRustlerTest do
     assert result["explicit_null"] == nil
     assert result["implicit_null"] == nil
   end
+
+  test "returns nil for empty input" do
+    assert {:ok, nil} == YamlRustler.parse("")
+    assert {:ok, nil} == YamlRustler.parse("# only a comment\n")
+    assert {:ok, nil} == YamlRustler.parse("---\n")
+  end
+
+  test "parses infinity and NaN as atoms" do
+    yaml = """
+    inf: .inf
+    plus_inf: +.Inf
+    neg_inf: -.INF
+    nan: .NaN
+    overflow: 1e400
+    """
+
+    assert {:ok, result} = YamlRustler.parse(yaml)
+    assert result["inf"] == :infinity
+    assert result["plus_inf"] == :infinity
+    assert result["neg_inf"] == :neg_infinity
+    assert result["nan"] == :nan
+    assert result["overflow"] == :infinity
+  end
 end

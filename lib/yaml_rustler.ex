@@ -27,6 +27,11 @@ defmodule YamlRustler do
   @doc """
   Parses a YAML string and returns an Elixir data structure.
 
+  Only the first document is returned, and input without any document
+  (an empty string or only comments) returns `{:ok, nil}`. The YAML floats
+  `.inf`, `-.inf` and `.nan` cannot be represented on the BEAM and are
+  returned as the atoms `:infinity`, `:neg_infinity` and `:nan`.
+
   ## Examples
 
       iex> YamlRustler.parse("foo: bar")

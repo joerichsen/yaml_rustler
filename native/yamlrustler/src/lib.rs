@@ -1,12 +1,23 @@
 use rustler::{Encoder, Env, Term, NifResult, types::atom::ok, types::tuple::make_tuple};
 use yaml_rust2::{YamlLoader, Yaml};
 
+mod atoms {
+    rustler::atoms! {
+        infinity,
+        neg_infinity,
+        nan,
+    }
+}
+
 #[rustler::nif]
 fn parse<'a>(env: Env<'a>, input: String) -> NifResult<Term<'a>> {
     match YamlLoader::load_from_str(&input) {
         Ok(docs) => {
-            let resolved = resolve_aliases(&docs[0], &docs);
-            let result = convert_yaml_to_term(env, &resolved);
+            // An empty stream (e.g. "" or only comments) has no documents
+            let result = match docs.first() {
+                Some(doc) => convert_yaml_to_term(env, &resolve_aliases(doc, &docs)),
+                None => rustler::types::atom::nil().encode(env),
+            };
             Ok(make_tuple(env, &[ok().encode(env), result]))
         },
         Err(e) => Err(rustler::Error::Term(Box::new(format!("YAML parsing error: {}", e)))),
@@ -48,7 +59,14 @@ fn resolve_aliases<'a>(yaml: &'a Yaml, docs: &'a [Yaml]) -> Yaml {
 
 fn convert_yaml_to_term<'a>(env: Env<'a>, yaml: &Yaml) -> Term<'a> {
     match yaml {
-        Yaml::Real(s) => s.parse::<f64>().unwrap().encode(env),
+        // The BEAM has no infinity or NaN floats, so those become atoms
+        Yaml::Real(_) => match yaml.as_f64() {
+            Some(f) if f.is_finite() => f.encode(env),
+            Some(f) if f.is_nan() => atoms::nan().encode(env),
+            Some(f) if f > 0.0 => atoms::infinity().encode(env),
+            Some(_) => atoms::neg_infinity().encode(env),
+            None => rustler::types::atom::nil().encode(env),
+        },
         Yaml::Integer(i) => i.encode(env),
         Yaml::String(s) => s.encode(env),
         Yaml::Boolean(b) => b.encode(env),
