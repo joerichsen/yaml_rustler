@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- The precompiled `x86_64-unknown-linux-gnu` NIF in 0.2.0 and 0.2.1 needed
+  glibc 2.33 or newer and failed to load on e.g. Debian 11 and Ubuntu 20.04.
+  It is now built with `cross` like the other Linux targets, so it runs on
+  older glibc versions again.
+
 ## 0.2.1 (2026-10-22)
 
 ### Added
